@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "jsx": "react-jsx",
+    "jsxImportSource": "nativewind",
+    "paths": {
+      "@/*": ["./sukoon/src/*"]
+    }
+  },
+  "include": ["sukoon"]
+}
