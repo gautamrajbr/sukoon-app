@@ -1,15 +1,14 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import puter from '@heyputer/puter.js';
 import * as admin from 'firebase-admin';
-
 dotenv.config();
 
-// Force set the Puter token
+// Initialize Puter with the Auth Token
+const puter = require('@heyputer/puter.js');
 if (process.env.PUTER_AUTH_TOKEN) {
-  (puter as any).setToken(process.env.PUTER_AUTH_TOKEN);
-  console.log('Puter token successfully forced.');
+  puter.authToken = process.env.PUTER_AUTH_TOKEN;
+  console.log('Puter Auth Token assigned.');
 }
 
 // Initialize Firebase Admin (Only if credentials are provided)
