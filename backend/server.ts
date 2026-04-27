@@ -6,14 +6,20 @@ dotenv.config();
 
 // Initialize Puter with the Auth Token
 const puter = require('@heyputer/puter.js');
-if (process.env.PUTER_AUTH_TOKEN) {
+const token = process.env.PUTER_AUTH_TOKEN;
+
+if (token) {
   try {
-    // Some versions use .setToken on the instance
     if (typeof puter.setToken === 'function') {
-      puter.setToken(process.env.PUTER_AUTH_TOKEN);
+      puter.setToken(token);
+    } else if (puter.ai && typeof puter.ai.setToken === 'function') {
+      puter.ai.setToken(token);
     } else {
-      // Direct assignment if allowed, or skip if it's already set via env
-      console.log('Puter: Attempting to use environment variable PUTER_AUTH_TOKEN automatically.');
+      // Last resort: try all common property names
+      puter.authToken = token;
+      puter.token = token;
+      if (puter.ai) puter.ai.authToken = token;
+      console.log('Puter: Applied multiple token assignment methods.');
     }
   } catch (e: any) {
     console.warn('Puter token setup warning:', e.message);
@@ -83,7 +89,8 @@ app.post('/chat', verifyUser, async (req: any, res: any) => {
       quickReplies: ["Tell me more", "I feel heard", "What can I do next?"]
     });
   } catch (err: any) {
-    console.error('FULL PUTER ERROR:', JSON.stringify(err, null, 2));
+    console.error('PUTER ERROR MESSAGE:', err.message);
+    console.error('PUTER ERROR DETAILS:', err.response?.data || err);
     res.status(500).json({ error: 'AI Connection Issue', details: err.message });
   }
 });
