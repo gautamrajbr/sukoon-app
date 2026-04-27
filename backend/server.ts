@@ -48,8 +48,7 @@ app.post('/chat', verifyUser, async (req: any, res) => {
   }
 
   try {
-    // Calling Puter AI on backend
-    // To use this for free, ensure you have set PUTER_API_KEY in .env
+    // Calling Puter AI on backend using the PUTER_API_KEY from .env
     const aiResponse = await puter.ai.chat(
       `You are Sukoon AI, an empathetic mental health assistant. 
        The user's name is ${userName}. 
@@ -58,13 +57,16 @@ app.post('/chat', verifyUser, async (req: any, res) => {
       { model: 'gemini-3.1-flash-lite-preview' }
     );
     
+    // Puter returns a message object with a content field
+    const reply = aiResponse?.message?.content || "I'm here to support you. Could you tell me more?";
+    
     res.json({
-      reply: aiResponse?.message?.content || "I am here to listen and support you.",
-      quickReplies: ["Tell me more", "How can you help?", "I'm feeling better"]
+      reply: reply,
+      quickReplies: ["Tell me more", "I feel heard", "What can I do next?"]
     });
   } catch (err: any) {
     console.error('Puter AI error:', err);
-    res.status(500).json({ error: 'Failed to communicate with AI', details: err.message });
+    res.status(500).json({ error: 'AI Connection Issue', details: err.message });
   }
 });
 
