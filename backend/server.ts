@@ -15,7 +15,7 @@ if (process.env.PUTER_AUTH_TOKEN) {
       // Direct assignment if allowed, or skip if it's already set via env
       console.log('Puter: Attempting to use environment variable PUTER_AUTH_TOKEN automatically.');
     }
-  } catch (e) {
+  } catch (e: any) {
     console.warn('Puter token setup warning:', e.message);
   }
 }
