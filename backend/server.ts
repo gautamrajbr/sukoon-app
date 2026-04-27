@@ -33,7 +33,7 @@ const verifyUser = async (req: any, res: any, next: any) => {
     try {
       const decodedToken = await admin.auth().verifyIdToken(token);
       req.user = decodedToken;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Token verification failed, but continuing:', error.message);
     }
   }
