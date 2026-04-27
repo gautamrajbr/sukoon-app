@@ -6,6 +6,12 @@ import * as admin from 'firebase-admin';
 
 dotenv.config();
 
+// Set the Puter token from environment variables
+if (process.env.PUTER_API_KEY) {
+  puter.setToken(process.env.PUTER_API_KEY);
+  console.log('Puter token set');
+}
+
 // Initialize Firebase Admin (requires serviceAccountKey.json in backend folder)
 // If not provided, it will log a warning and skip verification
 try {
