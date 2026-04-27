@@ -62,7 +62,7 @@ app.post('/chat', verifyUser, async (req: any, res: any) => {
     console.log('RAW PUTER RESPONSE:', JSON.stringify(aiResponse, null, 2));
     
     // Puter returns a message object with a content field
-    const reply = aiResponse?.message?.content || aiResponse?.text || "I'm here to support you. Could you tell me more?";
+    const reply = (aiResponse as any)?.message?.content || (aiResponse as any)?.text || "I'm here to support you. Could you tell me more?";
     
     res.json({
       reply: reply,
