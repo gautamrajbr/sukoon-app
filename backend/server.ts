@@ -39,7 +39,7 @@ const verifyUser = async (req: any, res: any, next: any) => {
   }
 };
 
-app.post('/chat', verifyUser, async (req: any, res) => {
+app.post('/chat', verifyUser, async (req: any, res: any) => {
   const { message, language } = req.body;
   const userName = req.user?.name || 'User';
 
