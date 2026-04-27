@@ -5,21 +5,32 @@ import * as admin from 'firebase-admin';
 dotenv.config();
 
 // Initialize Puter with the Auth Token
-const puter = require('@heyputer/puter.js');
+let puter = require('@heyputer/puter.js');
+// Handle ESM default export if it exists
+if (puter.default) {
+  puter = puter.default;
+}
+
+console.log('Puter object keys:', Object.keys(puter));
+
 const token = process.env.PUTER_AUTH_TOKEN;
 
 if (token) {
   try {
     if (typeof puter.setToken === 'function') {
       puter.setToken(token);
-    } else if (puter.ai && typeof puter.ai.setToken === 'function') {
-      puter.ai.setToken(token);
+      console.log('Puter: setToken used.');
     } else {
-      // Last resort: try all common property names
-      puter.authToken = token;
-      puter.token = token;
-      if (puter.ai) puter.ai.authToken = token;
-      console.log('Puter: Applied multiple token assignment methods.');
+      // Try setting on ai if it exists
+      if (puter.ai) {
+        if (typeof puter.ai.setToken === 'function') {
+          puter.ai.setToken(token);
+        } else {
+          (puter.ai as any).authToken = token;
+        }
+      }
+      (puter as any).authToken = token;
+      console.log('Puter: Property assignment used.');
     }
   } catch (e: any) {
     console.warn('Puter token setup warning:', e.message);
