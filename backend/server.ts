@@ -6,6 +6,12 @@ import * as admin from 'firebase-admin';
 
 dotenv.config();
 
+// Force set the Puter token
+if (process.env.PUTER_AUTH_TOKEN) {
+  (puter as any).setToken(process.env.PUTER_AUTH_TOKEN);
+  console.log('Puter token successfully forced.');
+}
+
 // Initialize Firebase Admin (Only if credentials are provided)
 const firebaseConfigured = process.env.FIREBASE_PROJECT_ID ? true : false;
 if (firebaseConfigured) {
