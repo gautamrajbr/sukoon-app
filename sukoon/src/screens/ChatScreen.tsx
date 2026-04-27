@@ -28,7 +28,7 @@ export default function ChatScreen({ navigation }: any) {
 
     try {
       // Call backend API
-      const res = await fetch('http://localhost:3000/chat', {
+      const res = await fetch('https://sukoon-backend-tzxw.onrender.com/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
