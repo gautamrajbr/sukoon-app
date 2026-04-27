@@ -1,31 +1,52 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { useAppStore } from '../store/useAppStore';
+
+type Message = {
+  id: number;
+  text: string;
+  sender: 'ai' | 'user';
+  action?: 'book_therapist';
+};
 
 export default function ChatScreen({ navigation }: any) {
-  const [messages, setMessages] = useState([
+  const { language } = useAppStore();
+  const [messages, setMessages] = useState<Message[]>([
     { id: 1, text: "I'm here for you. How are you feeling today?", sender: 'ai' }
   ]);
   const [input, setInput] = useState('');
 
   const quickReplies = ["I feel anxious", "Just checking in", "Need to breathe"];
 
-  const handleSend = (text: string) => {
+  const handleSend = async (text: string) => {
     if (!text.trim()) return;
     
     // Add user message
-    const newMsg = { id: Date.now(), text, sender: 'user' };
-    setMessages([...messages, newMsg]);
+    const newMsg: Message = { id: Date.now(), text, sender: 'user' };
+    setMessages(prev => [...prev, newMsg]);
     setInput('');
 
-    // Simulate backend response after a short delay
-    setTimeout(() => {
-      // Logic for 3 bad days to suggest therapist (simplified)
+    try {
+      // Call backend API
+      const res = await fetch('http://localhost:3000/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: text, language }),
+      });
+      const data = await res.json();
+      
+      const aiMsg: Message = { id: Date.now()+1, text: data.reply || "I'm here. Take your time.", sender: 'ai' };
+      setMessages(prev => [...prev, aiMsg]);
+      
       if (text.toLowerCase().includes('anxious') || text.toLowerCase().includes('sad')) {
-         setMessages(prev => [...prev, { id: Date.now()+1, text: "I hear you. It's okay to feel this way. Remember, I'm here. If you'd like, you can talk to a professional. The first session is free.", sender: 'ai', action: 'book_therapist' }]);
-      } else {
-         setMessages(prev => [...prev, { id: Date.now()+1, text: "Thank you for sharing. Take a deep breath. 🌿", sender: 'ai' }]);
+         setMessages(prev => [...prev, { id: Date.now()+2, text: "If you'd like, you can talk to a professional. The first session is free.", sender: 'ai', action: 'book_therapist' }]);
       }
-    }, 1000);
+    } catch (err) {
+      console.log('Error contacting backend:', err);
+      setMessages(prev => [...prev, { id: Date.now()+1, text: "I'm having trouble connecting right now, but I'm listening. Please try again in a moment.", sender: 'ai' }]);
+    }
   };
 
   return (

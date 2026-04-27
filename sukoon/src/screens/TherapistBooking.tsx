@@ -1,53 +1,60 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 
 export default function TherapistBooking({ navigation }: any) {
-  const slots = ['10:00 AM', '11:30 AM', '2:00 PM', '4:00 PM'];
-  const dates = ['Mon 12', 'Tue 13', 'Wed 14'];
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+
+  const therapists = [
+    { id: 1, name: 'Dr. Sarah', title: 'Clinical Psychologist', slots: ['10:00 AM', '02:00 PM', '04:30 PM'] },
+  ];
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Text style={styles.backBtn}>Back</Text>
+          <Text style={styles.backBtn}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book Session</Text>
-        <View style={{width: 40}} />
+        <Text style={styles.title}>Book a Session</Text>
       </View>
 
       <ScrollView style={styles.content}>
-        <View style={styles.profileCard}>
-          <View style={styles.avatarPlaceholder} />
-          <Text style={styles.name}>Dr. Sarah Ahmed</Text>
-          <Text style={styles.title}>Holistic Wellness Therapist</Text>
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>First Session Free</Text>
+        <View style={styles.freeSessionCard}>
+          <Text style={styles.freeText}>Your first session is 100% Free</Text>
+          <Text style={styles.freeSub}>Take the first step towards healing without any cost.</Text>
+        </View>
+
+        {therapists.map(t => (
+          <View key={t.id} style={styles.therapistCard}>
+            <Text style={styles.tName}>{t.name}</Text>
+            <Text style={styles.tTitle}>{t.title}</Text>
+            
+            <Text style={styles.slotsTitle}>Available Slots Today</Text>
+            <View style={styles.slotContainer}>
+              {t.slots.map((slot, idx) => (
+                <TouchableOpacity 
+                  key={idx} 
+                  style={[styles.slot, selectedSlot === idx && styles.selectedSlot]}
+                  onPress={() => setSelectedSlot(idx)}
+                >
+                  <Text style={[styles.slotText, selectedSlot === idx && styles.selectedSlotText]}>{slot}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Select Date</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
-          {dates.map((date, idx) => (
-            <TouchableOpacity key={idx} style={[styles.dateCard, idx === 0 && styles.selectedCard]}>
-              <Text style={[styles.dateText, idx === 0 && styles.selectedText]}>{date}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <Text style={styles.sectionTitle}>Available Slots</Text>
-        <View style={styles.slotsGrid}>
-          {slots.map((slot, idx) => (
-             <TouchableOpacity key={idx} style={styles.slotCard}>
-               <Text style={styles.slotText}>{slot}</Text>
-             </TouchableOpacity>
-          ))}
-        </View>
+        ))}
       </ScrollView>
 
       <View style={styles.footer}>
-         <TouchableOpacity style={styles.confirmBtn} onPress={() => alert('Session Confirmed!')}>
-            <Text style={styles.confirmText}>Confirm Session</Text>
-         </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.bookBtn, selectedSlot === null && { opacity: 0.5 }]} 
+          disabled={selectedSlot === null}
+          onPress={() => {
+            alert('Session Booked Successfully!');
+            navigation.navigate('Chat');
+          }}
+        >
+          <Text style={styles.bookBtnText}>Confirm Booking</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -55,26 +62,23 @@ export default function TherapistBooking({ navigation }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { padding: 20, paddingTop: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  backBtn: { color: '#64748B', fontSize: 16 },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#111827' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 60, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  backBtn: { fontSize: 16, color: '#6EE7B7', marginRight: 15 },
+  title: { fontSize: 20, fontWeight: '600', color: '#111827' },
   content: { padding: 20 },
-  profileCard: { backgroundColor: '#F8FAFC', borderRadius: 24, padding: 24, alignItems: 'center', marginBottom: 30 },
-  avatarPlaceholder: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#E0F2FE', marginBottom: 16 },
-  name: { fontSize: 22, fontWeight: 'bold', color: '#111827', marginBottom: 4 },
-  title: { fontSize: 16, color: '#64748B', marginBottom: 16 },
-  badge: { backgroundColor: '#D1FAE5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  badgeText: { color: '#065F46', fontWeight: '600', fontSize: 12 },
-  sectionTitle: { fontSize: 18, fontWeight: '600', color: '#111827', marginBottom: 16 },
-  scrollRow: { marginBottom: 30 },
-  dateCard: { paddingHorizontal: 24, paddingVertical: 16, borderRadius: 20, backgroundColor: '#F8FAFC', marginRight: 12 },
-  selectedCard: { backgroundColor: '#6EE7B7' },
-  dateText: { color: '#64748B', fontSize: 16 },
-  selectedText: { color: '#111827', fontWeight: '600' },
-  slotsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  slotCard: { width: '48%', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', paddingVertical: 16, borderRadius: 16, alignItems: 'center', marginBottom: 12 },
-  slotText: { color: '#111827', fontSize: 16 },
-  footer: { padding: 20, paddingBottom: 40, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  confirmBtn: { backgroundColor: '#111827', padding: 20, borderRadius: 30, alignItems: 'center' },
-  confirmText: { color: '#FFFFFF', fontSize: 18, fontWeight: '600' }
+  freeSessionCard: { backgroundColor: '#EDE9FE', padding: 16, borderRadius: 12, marginBottom: 24 },
+  freeText: { fontSize: 16, fontWeight: 'bold', color: '#5B21B6' },
+  freeSub: { fontSize: 14, color: '#5B21B6', marginTop: 4 },
+  therapistCard: { borderWidth: 1, borderColor: '#F3F4F6', borderRadius: 12, padding: 16 },
+  tName: { fontSize: 18, fontWeight: '600', color: '#111827' },
+  tTitle: { fontSize: 14, color: '#6B7280', marginBottom: 16 },
+  slotsTitle: { fontSize: 14, fontWeight: '500', color: '#111827', marginBottom: 10 },
+  slotContainer: { flexDirection: 'row', flexWrap: 'wrap' },
+  slot: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 20, paddingVertical: 8, paddingHorizontal: 16, marginRight: 10, marginBottom: 10 },
+  selectedSlot: { backgroundColor: '#6EE7B7', borderColor: '#6EE7B7' },
+  slotText: { color: '#374151' },
+  selectedSlotText: { color: '#111827', fontWeight: '500' },
+  footer: { padding: 20, borderTopWidth: 1, borderTopColor: '#F3F4F6' },
+  bookBtn: { backgroundColor: '#111827', padding: 16, borderRadius: 12, alignItems: 'center' },
+  bookBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' }
 });
