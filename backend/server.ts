@@ -6,15 +6,19 @@ import * as admin from 'firebase-admin';
 
 dotenv.config();
 
-// Initialize Firebase Admin (requires serviceAccountKey.json in backend folder)
-// If not provided, it will log a warning and skip verification
-try {
-  admin.initializeApp({
-    credential: admin.credential.applicationDefault(), // Looks for GOOGLE_APPLICATION_CREDENTIALS
-  });
-  console.log('Firebase Admin initialized');
-} catch (error) {
-  console.warn('Firebase Admin could not be initialized. Auth verification will be skipped.');
+// Initialize Firebase Admin (Only if credentials are provided)
+const firebaseConfigured = process.env.FIREBASE_PROJECT_ID ? true : false;
+if (firebaseConfigured) {
+  try {
+    admin.initializeApp({
+      projectId: process.env.FIREBASE_PROJECT_ID,
+    });
+    console.log('Firebase Admin initialized with Project ID:', process.env.FIREBASE_PROJECT_ID);
+  } catch (error) {
+    console.warn('Firebase Admin init failed:', error);
+  }
+} else {
+  console.log('Firebase Admin not configured. Running in open mode.');
 }
 
 const app = express();
@@ -24,25 +28,16 @@ app.use(express.json());
 // Middleware to verify Google ID Token from Frontend
 const verifyUser = async (req: any, res: any, next: any) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next();
-  }
-
-  const token = authHeader.split('Bearer ')[1];
-  try {
-    // Only verify if Firebase Admin was successfully initialized
-    if (admin.apps.length > 0) {
+  if (authHeader && authHeader.startsWith('Bearer ') && admin.apps.length > 0) {
+    const token = authHeader.split('Bearer ')[1];
+    try {
       const decodedToken = await admin.auth().verifyIdToken(token);
       req.user = decodedToken;
-    } else {
-      console.warn('Firebase Admin not initialized, skipping token verification');
+    } catch (error) {
+      console.error('Token verification failed, but continuing:', error.message);
     }
-    next();
-  } catch (error) {
-    console.error('Token verification failed:', error);
-    // Force allow for development
-    next();
   }
+  next();
 };
 
 app.post('/chat', verifyUser, async (req: any, res: any) => {
