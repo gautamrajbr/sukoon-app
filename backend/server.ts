@@ -4,37 +4,24 @@ import dotenv from 'dotenv';
 import * as admin from 'firebase-admin';
 dotenv.config();
 
-// Initialize Puter with the Auth Token
-let puter = require('@heyputer/puter.js');
-// Handle ESM default export if it exists
-if (puter.default) {
-  puter = puter.default;
-}
-
-console.log('Puter object keys:', Object.keys(puter));
-
+// Initialize Puter (Attempting Anonymous Mode as per tutorial)
+const puter = require('@heyputer/puter.js');
 const token = process.env.PUTER_AUTH_TOKEN;
 
 if (token) {
   try {
+    // If token is provided, use it, otherwise attempt anonymous
     if (typeof puter.setToken === 'function') {
       puter.setToken(token);
-      console.log('Puter: setToken used.');
-    } else {
-      // Try setting on ai if it exists
-      if (puter.ai) {
-        if (typeof puter.ai.setToken === 'function') {
-          puter.ai.setToken(token);
-        } else {
-          (puter.ai as any).authToken = token;
-        }
-      }
-      (puter as any).authToken = token;
-      console.log('Puter: Property assignment used.');
+    } else if (puter.ai && typeof puter.ai.setToken === 'function') {
+      puter.ai.setToken(token);
     }
+    console.log('Puter: Running with token.');
   } catch (e: any) {
     console.warn('Puter token setup warning:', e.message);
   }
+} else {
+  console.log('Puter: Running in Anonymous mode.');
 }
 
 // Initialize Firebase Admin (Only if credentials are provided)
@@ -86,7 +73,7 @@ app.post('/chat', verifyUser, async (req: any, res: any) => {
        The user's name is ${userName}. 
        Respond in ${language || 'English'}.
        User says: ${message}`,
-      { model: 'grok-4-1-fast' }
+      { model: 'gemini-2.0-flash' }
     );
     
     // Puter returns a message object with a content field
