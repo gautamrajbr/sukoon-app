@@ -80,17 +80,14 @@ app.post('/chat', verifyUser, async (req: any, res: any) => {
   }
 
   try {
-    // Calling Puter AI on backend using the PUTER_AUTH_TOKEN from .env
-    console.log('Sending message to Puter AI...');
+    // Calling Puter AI
     const aiResponse = await puter.ai.chat(
       `You are Sukoon AI, an empathetic mental health assistant. 
        The user's name is ${userName}. 
        Respond in ${language || 'English'}.
        User says: ${message}`,
-      { model: 'gemini-3.1-flash-lite-preview' }
+      { model: 'grok-4-1-fast' }
     );
-    
-    console.log('RAW PUTER RESPONSE:', JSON.stringify(aiResponse, null, 2));
     
     // Puter returns a message object with a content field
     const reply = (aiResponse as any)?.message?.content || (aiResponse as any)?.text || "I'm here to support you. Could you tell me more?";
