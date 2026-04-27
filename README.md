@@ -30,3 +30,4 @@ The backend Express app is deployed to:
 - Due to the constrained environment, Firebase Google Sign-In is mocked with email/password flow but using the real `firebase/auth` SDK.
 - Supabase is configured with a dummy URL/Key in `sukoon/src/backend/api.ts`.
 - The database schema required is present in `sukoon/src/backend/supabaseSchema.sql`.
+trigger
