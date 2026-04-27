@@ -50,6 +50,7 @@ app.post('/chat', verifyUser, async (req: any, res: any) => {
 
   try {
     // Calling Puter AI on backend using the PUTER_AUTH_TOKEN from .env
+    console.log('Sending message to Puter AI...');
     const aiResponse = await puter.ai.chat(
       `You are Sukoon AI, an empathetic mental health assistant. 
        The user's name is ${userName}. 
@@ -58,8 +59,10 @@ app.post('/chat', verifyUser, async (req: any, res: any) => {
       { model: 'gemini-3.1-flash-lite-preview' }
     );
     
+    console.log('RAW PUTER RESPONSE:', JSON.stringify(aiResponse, null, 2));
+    
     // Puter returns a message object with a content field
-    const reply = aiResponse?.message?.content || "I'm here to support you. Could you tell me more?";
+    const reply = aiResponse?.message?.content || aiResponse?.text || "I'm here to support you. Could you tell me more?";
     
     res.json({
       reply: reply,
