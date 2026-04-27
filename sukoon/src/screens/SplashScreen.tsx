@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { theme } from '../constants/theme';
 
 export default function SplashScreen({ navigation }: any) {
   useEffect(() => {
@@ -19,20 +20,17 @@ export default function SplashScreen({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.colors.background,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logo: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#6EE7B7', // Soft Mint Green
-    fontFamily: 'sans-serif',
+    ...theme.typography.display,
+    color: theme.colors.primary,
   },
   subtitle: {
-    fontSize: 18,
-    color: '#111827',
+    ...theme.typography.bodyLg,
+    color: theme.colors.onSurfaceVariant,
     marginTop: 10,
-    fontFamily: 'sans-serif',
   }
 });

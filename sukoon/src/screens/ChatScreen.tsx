@@ -1,127 +1,367 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
-import { useAppStore } from '../store/useAppStore';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
 
-type Message = {
-  id: number;
-  text: string;
-  sender: 'ai' | 'user';
-  action?: 'book_therapist';
-};
+  Platform,
+  Dimensions,
+  ImageBackground,
+  ActivityIndicator,
+  Keyboard,
+  KeyboardAvoidingView
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { auth } from '../utils/firebase';
+import axios from 'axios';
+
+const { width } = Dimensions.get('window');
+const API_URL = 'http://192.168.29.49:3000';
 
 export default function ChatScreen({ navigation }: any) {
-  const { language } = useAppStore();
-  const [messages, setMessages] = useState<Message[]>([
-    { id: 1, text: "I'm here for you. How are you feeling today?", sender: 'ai' }
+  const insets = useSafeAreaInsets();
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [inputText, setInputText] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState([
+    {
+      id: '1',
+      text: "Hello. I'm here for you. Whatever you're carrying today, it's safe to set it down here. How are you feeling right now?",
+      sender: 'ai',
+      timestamp: new Date().toISOString()
+    }
   ]);
-  const [input, setInput] = useState('');
 
-  const quickReplies = ["I feel anxious", "Just checking in", "Need to breathe"];
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
-  const handleSend = async (text: string) => {
-    if (!text.trim()) return;
-    
-    // Add user message
-    const newMsg: Message = { id: Date.now(), text, sender: 'user' };
-    setMessages(prev => [...prev, newMsg]);
-    setInput('');
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+
+    const hideSubscription = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
+  // Auto-scroll to bottom when messages change or keyboard visibility changes
+  useEffect(() => {
+    if (scrollViewRef.current) {
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 100);
+    }
+  }, [messages, isKeyboardVisible]);
+
+  const sendMessage = async () => {
+    if (!inputText.trim() || loading) return;
+
+    const userMsg = {
+      id: Date.now().toString(),
+      text: inputText.trim(),
+      sender: 'user',
+      timestamp: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, userMsg]);
+    setInputText('');
+    setLoading(true);
 
     try {
-      // Call backend API
-      const res = await fetch('https://sukoon-backend-tzxw.onrender.com/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ message: text, language }),
-      });
-      const data = await res.json();
-      
-      const aiMsg: Message = { id: Date.now()+1, text: data.reply || "I'm here. Take your time.", sender: 'ai' };
-      setMessages(prev => [...prev, aiMsg]);
-      
-      if (text.toLowerCase().includes('anxious') || text.toLowerCase().includes('sad')) {
-         setMessages(prev => [...prev, { id: Date.now()+2, text: "If you'd like, you can talk to a professional. The first session is free.", sender: 'ai', action: 'book_therapist' }]);
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('No authenticated user');
       }
-    } catch (err) {
-      console.log('Error contacting backend:', err);
-      setMessages(prev => [...prev, { id: Date.now()+1, text: "I'm having trouble connecting right now, but I'm listening. Please try again in a moment.", sender: 'ai' }]);
+
+      const idToken = await user.getIdToken();
+      const response = await axios.post(`${API_URL}/chat`, {
+        message: userMsg.text,
+        language: 'English'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${idToken}`
+        }
+      });
+
+      const aiMsg = {
+        id: (Date.now() + 1).toString(),
+        text: response.data.reply,
+        sender: 'ai',
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, aiMsg]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      const errorMsg = {
+        id: (Date.now() + 1).toString(),
+        text: "I'm having a little trouble connecting. But I'm still here with you.",
+        sender: 'ai',
+        timestamp: new Date().toISOString()
+      };
+      setMessages(prev => [...prev, errorMsg]);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <ImageBackground
+      source={require('../../assets/sanctuary_bg.png')}
+      style={styles.mainContainer}
+      resizeMode="cover"
     >
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Sukoon AI</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('MoodCheck')}>
-            <Text style={{color: '#6EE7B7'}}>Mood</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.chatContainer}>
-        {messages.map((msg) => (
-          <View key={msg.id} style={[styles.bubbleWrapper, msg.sender === 'user' ? styles.userWrapper : styles.aiWrapper]}>
-            <View style={[styles.bubble, msg.sender === 'user' ? styles.userBubble : styles.aiBubble]}>
-              <Text style={styles.messageText}>{msg.text}</Text>
-            </View>
-            {msg.action === 'book_therapist' && (
-              <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('TherapistBooking')}>
-                <Text style={styles.actionText}>Book a Session</Text>
-              </TouchableOpacity>
-            )}
+      {/* Main content area with padding for safe area */}
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerIcon}>
+            <MaterialCommunityIcons name="arrow-left" color="#4A6741" size={24} />
+          </TouchableOpacity>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerTitle}>S A N C T U A R Y</Text>
+            <View style={styles.statusDot} />
           </View>
-        ))}
-      </ScrollView>
-
-      <View style={styles.inputArea}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.quickReplies}>
-          {quickReplies.map((reply, idx) => (
-            <TouchableOpacity key={idx} style={styles.chip} onPress={() => handleSend(reply)}>
-              <Text style={styles.chipText}>{reply}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <View style={styles.inputRow}>
-          <TextInput 
-            style={styles.input}
-            placeholder="Type a message..."
-            placeholderTextColor="#9CA3AF"
-            value={input}
-            onChangeText={setInput}
-            onSubmitEditing={() => handleSend(input)}
-          />
-          <TouchableOpacity style={styles.sendBtn} onPress={() => handleSend(input)}>
-            <Text style={styles.sendText}>Send</Text>
+          <TouchableOpacity style={styles.headerIcon}>
+            <MaterialCommunityIcons name="spa-outline" color="#4A6741" size={22} />
           </TouchableOpacity>
         </View>
+
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
+        >
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.messageArea}
+            contentContainerStyle={styles.messageContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {messages.map((msg) => (
+              <View
+                key={msg.id}
+                style={[
+                  styles.messageRow,
+                  msg.sender === 'user' ? styles.rowUser : styles.rowAI
+                ]}
+              >
+                {msg.sender === 'ai' && (
+                  <View style={styles.aiAvatar}>
+                    <MaterialCommunityIcons name="leaf" size={14} color="#8BA888" />
+                  </View>
+                )}
+                <View style={[
+                  styles.bubble,
+                  msg.sender === 'user' ? styles.bubbleUser : styles.bubbleAI
+                ]}>
+                  <Text style={[
+                    styles.messageText,
+                    msg.sender === 'user' ? styles.textUser : styles.textAI
+                  ]}>
+                    {msg.text}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            {loading && (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="small" color="#8BA888" />
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Input container - always at bottom with consistent padding */}
+          <View style={[
+            styles.inputWrapper,
+            !isKeyboardVisible && { paddingBottom: insets.bottom }
+          ]}>
+            <View style={styles.inputBox}>
+              <TextInput
+                style={styles.input}
+                placeholder="Share your thoughts..."
+                placeholderTextColor="rgba(74, 103, 65, 0.4)"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+              />
+              <TouchableOpacity
+                onPress={sendMessage}
+                style={[styles.sendBtn, !inputText.trim() && styles.sendBtnDisabled]}
+                disabled={!inputText.trim() || loading}
+              >
+                <MaterialCommunityIcons name="arrow-up" color="#FFFFFF" size={20} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
       </View>
-    </KeyboardAvoidingView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
-  header: { padding: 20, paddingTop: 60, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#F3F4F6', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#111827' },
-  chatContainer: { padding: 20, paddingBottom: 40 },
-  bubbleWrapper: { marginBottom: 16, maxWidth: '80%' },
-  userWrapper: { alignSelf: 'flex-end' },
-  aiWrapper: { alignSelf: 'flex-start' },
-  bubble: { padding: 16, borderRadius: 24 },
-  userBubble: { backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E0F2FE', borderBottomRightRadius: 4, shadowColor: '#6EE7B7', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 1 },
-  aiBubble: { backgroundColor: '#F0FDF4', borderBottomLeftRadius: 4 }, // Soft Mint bg
-  messageText: { fontSize: 16, color: '#111827', lineHeight: 24 },
-  actionButton: { marginTop: 10, backgroundColor: '#6EE7B7', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 20, alignSelf: 'flex-start' },
-  actionText: { color: '#111827', fontWeight: '600' },
-  inputArea: { padding: 16, backgroundColor: '#FFFFFF', borderTopWidth: 1, borderTopColor: '#F3F4F6' },
-  quickReplies: { marginBottom: 12 },
-  chip: { backgroundColor: '#E0F2FE', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, marginRight: 10 },
-  chipText: { color: '#0369A1', fontSize: 14, fontWeight: '500' },
-  inputRow: { flexDirection: 'row', alignItems: 'center' },
-  input: { flex: 1, backgroundColor: '#F9FAFB', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 12, fontSize: 16, marginRight: 10, color: '#111827' },
-  sendBtn: { backgroundColor: '#6EE7B7', borderRadius: 24, paddingHorizontal: 20, paddingVertical: 12 },
-  sendText: { color: '#111827', fontWeight: '600' }
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#F5F5ED',
+  },
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(74, 103, 65, 0.08)',
+  },
+  headerIcon: {
+    padding: 8,
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: {
+    fontFamily: 'Manrope_600SemiBold',
+    fontSize: 14,
+    color: '#4A6741',
+    letterSpacing: 3,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#8BA888',
+  },
+  keyboardAvoid: {
+    flex: 1,
+  },
+  messageArea: {
+    flex: 1,
+  },
+  messageContent: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 10,
+  },
+  messageRow: {
+    marginBottom: 20,
+    maxWidth: '85%',
+  },
+  rowUser: {
+    alignSelf: 'flex-end',
+    alignItems: 'flex-end',
+  },
+  rowAI: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  aiAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
+    marginTop: 2,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  bubble: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  bubbleUser: {
+    backgroundColor: '#4A6741',
+    borderBottomRightRadius: 4,
+  },
+  bubbleAI: {
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    borderTopLeftRadius: 4,
+  },
+  messageText: {
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  textUser: {
+    color: '#FFFFFF',
+  },
+  textAI: {
+    color: '#2C3E2D',
+  },
+  loadingContainer: {
+    paddingVertical: 10,
+    alignItems: 'flex-start',
+    marginLeft: 42,
+  },
+  inputWrapper: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 12, // Default padding when keyboard is visible
+    backgroundColor: 'rgba(245, 245, 237, 0.5)',
+  },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 103, 65, 0.1)',
+    minHeight: 52,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+  },
+  input: {
+    flex: 1,
+    fontFamily: 'Manrope_400Regular',
+    fontSize: 15,
+    color: '#2C3E2D',
+    paddingTop: 10,
+    paddingBottom: 10,
+    maxHeight: 120,
+  },
+  sendBtn: {
+    backgroundColor: '#4A6741',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 10,
+    marginBottom: 2,
+  },
+  sendBtnDisabled: {
+    backgroundColor: 'rgba(74, 103, 65, 0.2)',
+  },
 });
