@@ -1,30 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { auth } from '../utils/firebase';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useAppStore } from '../store/useAppStore';
 
 export default function LoginScreen({ navigation }: any) {
   const [loading, setLoading] = useState(false);
   const { setUser } = useAppStore();
 
-  const handleMockGoogleLogin = async () => {
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '116683608516-fsb3ojc3n6cmvskp1a5ar8pht1co3sfs.apps.googleusercontent.com',
+    });
+  }, []);
+
+  const handleGoogleLogin = async () => {
     setLoading(true);
     try {
-      // Since Google Sign-In requires browser popups which don't work well in this environment without specific setup,
-      // and following the strict instruction for Firebase Auth Google Login, we will mock the auth flow 
-      // but integrate with the Firebase Auth API to show it's wired up.
-      // We will attempt a standard sign in, or create a mock user if it fails.
+      await GoogleSignin.hasPlayServices();
+      const userInfo = await GoogleSignin.signIn();
+      // Depending on the version of google-signin, the idToken could be in userInfo.data.idToken or userInfo.idToken
+      const idToken = (userInfo as any).data?.idToken || (userInfo as any).idToken;
       
-      try {
-        const userCredential = await signInWithEmailAndPassword(auth, 'mock@sukoon.app', 'mockpassword');
+      if (idToken) {
+        const googleCredential = GoogleAuthProvider.credential(idToken);
+        const userCredential = await signInWithCredential(auth, googleCredential);
         setUser(userCredential.user);
-      } catch (err) {
-        const userCredential = await createUserWithEmailAndPassword(auth, 'mock@sukoon.app', 'mockpassword');
-        setUser(userCredential.user);
+        navigation.replace('LanguageSelection');
       }
-      
-      navigation.replace('LanguageSelection');
     } catch (error) {
       console.error(error);
     } finally {
@@ -39,7 +43,7 @@ export default function LoginScreen({ navigation }: any) {
 
       <TouchableOpacity 
         style={[styles.googleButton, loading && styles.disabled]} 
-        onPress={handleMockGoogleLogin}
+        onPress={handleGoogleLogin}
         disabled={loading}
       >
         <Text style={styles.buttonText}>
