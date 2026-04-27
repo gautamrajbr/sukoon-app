@@ -5,7 +5,9 @@ import * as admin from 'firebase-admin';
 dotenv.config();
 
 // Initialize Puter (Attempting Anonymous Mode as per tutorial)
-const puter = require('@heyputer/puter.js');
+let puter = require('@heyputer/puter.js');
+if (puter.default) puter = puter.default;
+
 const token = process.env.PUTER_AUTH_TOKEN;
 
 if (token) {
