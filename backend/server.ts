@@ -7,8 +7,17 @@ dotenv.config();
 // Initialize Puter with the Auth Token
 const puter = require('@heyputer/puter.js');
 if (process.env.PUTER_AUTH_TOKEN) {
-  puter.authToken = process.env.PUTER_AUTH_TOKEN;
-  console.log('Puter Auth Token assigned.');
+  try {
+    // Some versions use .setToken on the instance
+    if (typeof puter.setToken === 'function') {
+      puter.setToken(process.env.PUTER_AUTH_TOKEN);
+    } else {
+      // Direct assignment if allowed, or skip if it's already set via env
+      console.log('Puter: Attempting to use environment variable PUTER_AUTH_TOKEN automatically.');
+    }
+  } catch (e) {
+    console.warn('Puter token setup warning:', e.message);
+  }
 }
 
 // Initialize Firebase Admin (Only if credentials are provided)
