@@ -17,16 +17,20 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { auth } from '../utils/firebase';
+import { WebView } from 'react-native-webview';
 import axios from 'axios';
 
 const { width } = Dimensions.get('window');
-const API_URL = 'http://192.168.29.49:3000';
+const API_URL = 'https://sukoon-backend-tzxw.onrender.com';
 
 export default function ChatScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
+  const webViewRef = useRef<WebView>(null);
+  
   const [inputText, setInputText] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isBridgeReady, setIsBridgeReady] = useState(false);
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -68,6 +72,38 @@ export default function ChatScreen({ navigation }: any) {
     }
   }, [messages, isKeyboardVisible]);
 
+  const onWebViewMessage = (event: any) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      console.log('Bridge Message:', data.type);
+
+      if (data.type === 'BRIDGE_READY') {
+        setIsBridgeReady(true);
+      } else if (data.type === 'CHAT_RESPONSE') {
+        const aiMsg = {
+          id: Date.now().toString(),
+          text: data.reply,
+          sender: 'ai',
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        setLoading(false);
+      } else if (data.type === 'CHAT_ERROR') {
+        console.error('Puter Error:', data.error);
+        const errorMsg = {
+          id: Date.now().toString(),
+          text: "I'm having a little trouble connecting. But I'm still here with you.",
+          sender: 'ai',
+          timestamp: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, errorMsg]);
+        setLoading(false);
+      }
+    } catch (e) {
+      console.error('Failed to parse WebView message', e);
+    }
+  };
+
   const sendMessage = async () => {
     if (!inputText.trim() || loading) return;
 
@@ -82,41 +118,25 @@ export default function ChatScreen({ navigation }: any) {
     setInputText('');
     setLoading(true);
 
-    try {
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error('No authenticated user');
-      }
+    const user = auth.currentUser;
+    const userName = user?.displayName || 'User';
 
-      const idToken = await user.getIdToken();
-      const response = await axios.post(`${API_URL}/chat`, {
-        message: userMsg.text,
-        language: 'English'
-      }, {
-        headers: {
-          'Authorization': `Bearer ${idToken}`
-        }
-      });
-
-      const aiMsg = {
-        id: (Date.now() + 1).toString(),
-        text: response.data.reply,
-        sender: 'ai',
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, aiMsg]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      const errorMsg = {
-        id: (Date.now() + 1).toString(),
-        text: "I'm having a little trouble connecting. But I'm still here with you.",
-        sender: 'ai',
-        timestamp: new Date().toISOString()
-      };
-      setMessages(prev => [...prev, errorMsg]);
-    } finally {
-      setLoading(false);
+    // If bridge isn't ready, wait a bit or show error
+    if (!isBridgeReady) {
+      console.warn('AI Bridge not ready yet, retrying in 1s...');
+      // Fallback or retry logic can go here
     }
+
+    // Send request to WebView Bridge
+    const bridgeRequest = {
+      type: 'CHAT_REQUEST',
+      message: userMsg.text,
+      userName: userName,
+      language: 'English',
+      model: 'gemini-3.1-flash-lite-preview'
+    };
+
+    webViewRef.current?.postMessage(JSON.stringify(bridgeRequest));
   };
 
   return (
@@ -210,6 +230,16 @@ export default function ChatScreen({ navigation }: any) {
             </View>
           </View>
         </KeyboardAvoidingView>
+      </View>
+      <View style={{ height: 0, width: 0, opacity: 0, position: 'absolute' }}>
+        <WebView
+          ref={webViewRef}
+          source={{ uri: `${API_URL}/ai-bridge` }}
+          onMessage={onWebViewMessage}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          startInLoadingState={true}
+        />
       </View>
     </ImageBackground>
   );
